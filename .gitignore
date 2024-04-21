@@ -12,3 +12,6 @@ target/
 
 # MSVC Windows builds of rustc generate these, which store debugging information
 *.pdb
+
+# Pre-commit
+.pre-commit-config.yaml
