@@ -10,6 +10,8 @@
 
 <br>
 
+Supports Linux kernel >= 4.5
+
 ## Roadmap
 
 **v0.1.0**
