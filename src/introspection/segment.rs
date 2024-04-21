@@ -6,12 +6,12 @@ use std::path::Path;
 
 pub type InodeId = u64;
 
-/// Small device abstrcation.
-/// See https://linux-kernel-labs.github.io/refs/heads/master/labs/device_model.html#classes
+/// Small device abstraction.
+/// See <https://linux-kernel-labs.github.io/refs/heads/master/labs/device_model.html#classes>
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Device {
-    major: u32,
-    minor: u32,
+    pub major: u32,
+    pub minor: u32,
 }
 
 impl Device {
@@ -60,21 +60,21 @@ pub enum SegmentPermission {
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Segment {
     /// Start address
-    start: u64,
+    pub start: u64,
     /// End address
-    end: u64,
+    pub end: u64,
     // Permissions
-    permissions: [SegmentPermission; 4],
+    pub permissions: [SegmentPermission; 4],
     /// Offset into the file/whatever
-    offset: u64,
+    pub offset: u64,
     /// Device (major:minor)
-    device: Option<Device>,
+    pub device: Option<Device>,
     /// Inode on that device
-    inode: Option<InodeId>,
+    pub inode: Option<InodeId>,
     /// Type of the segment
-    segment_type: SegmentType,
+    pub segment_type: SegmentType,
     /// Usually the file that is backing the mapping
-    path: Box<Path>,
+    pub path: Box<Path>,
 }
 
 impl Segment {
