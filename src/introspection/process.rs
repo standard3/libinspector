@@ -3,7 +3,6 @@
 use std::path::Path;
 
 type Pid = u32; // maximum value: 2^22
-type Tid = u32; // maximum value: 2^22
 type InodeId = u64;
 
 /// Small device abstrcation.
@@ -123,7 +122,8 @@ struct Process {
     /// The nice value.
     nice: i8,
     /// Number of threads in this process.
-    num_threads: i8,
+    /// Option because Process can be a thread.
+    num_threads: Option<i8>,
     /// Obsolete
     itrealvalue: u64,
     /// The time the process started after system boot, measured in clock ticks.
@@ -192,7 +192,9 @@ struct Process {
     /// The thread's exit status in the form reported by [waitpid(2)](https://www.man7.org/linux/man-pages/man2/waitpid.2.html).
     exit_code: u32,
 
-    // additional fields
-    threads: Vec<Thread>,
-    segments: Vec<Segment>,
+    // additional custom fields
+    /// Threads in this process, threads in Linux are very similar to Processes so we use the same struct.
+    threads: Option<Vec<Process>>,
+    /// Segments in the process's virtual address space.
+    segments: Vec<Box<Segment>>,
 }
