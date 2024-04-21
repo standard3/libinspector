@@ -1,6 +1,6 @@
 [package]
 name = "libinspector"
-description = "Memory scanning crate for Linux"
+description = "Multi-purpose Linux memory manipulation and interaction crate"
 
 version = "0.1.0"
 edition = "2021"
