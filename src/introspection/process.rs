@@ -1,69 +1,11 @@
 /// This module contains the structs and functions to introspect a process.
 /// Based on https://www.man7.org/linux/man-pages/man5/proc.5.html
-use std::path::Path;
+use crate::introspection::segment::Segment;
 
-type Pid = u32; // maximum value: 2^22
-type InodeId = u64;
-
-/// Small device abstrcation.
-/// See https://linux-kernel-labs.github.io/refs/heads/master/labs/device_model.html#classes
-struct Device {
-    major: u32,
-    minor: u32,
-}
-
-/// Information about a segment in the process's virtual address space.
-enum SegmentType {
-    /// The initial process's (also known as the main thread's) stack.
-    Stack,
-    /// The virtual dynamically linked shared object.
-    SharedLibrary,
-    Data(DataSegment),
-    Code,
-    /// A named private anonymous mapping.
-    Anonymous(String),
-    /// A named shared anonymous mapping.
-    SharedAnonymous(String),
-}
-
-/// Type of data segment.
-enum DataSegment {
-    /// The process's heap.
-    Heap,
-    Initialized,
-    Uninitialized,
-}
-
-/// Permissions for a segment.
-enum SegmentPermission {
-    Read,
-    Write,
-    Execute,
-    NoPermission,
-    Private,
-    Shared,
-}
-
-/// Mapped memory region in the process's virtual address space.
-struct Segment {
-    /// Start address
-    start: u64,
-    /// End address
-    end: u64,
-    // Permissions
-    permissions: [SegmentPermission; 4],
-    /// Offset into the file/whatever
-    offset: u64,
-    /// Device (major:minor)
-    device: Option<Device>,
-    /// Inode on that device
-    inode: Option<InodeId>,
-    /// Usually the file that is backing the mapping
-    path: Path,
-}
+pub type Pid = u32; // maximum value: 2^22
 
 /// Represents a process state.
-enum ProcessState {
+pub enum ProcessState {
     /// R : Running
     Running,
     /// D : Waiting in uninterruptible disk sleep
@@ -83,7 +25,7 @@ enum ProcessState {
 }
 
 /// Full status information about the process.
-struct Process {
+pub struct Process {
     /// The process ID
     process_id: Pid,
     /// Filename of the executable
