@@ -39,6 +39,7 @@ enum SegmentPermission {
     Read,
     Write,
     Execute,
+    NoPermission,
     Private,
     Shared,
 }
