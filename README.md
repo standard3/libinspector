@@ -14,24 +14,24 @@ Supports Linux kernel >= 4.5
 
 ## Roadmap
 
-**v0.1.0**
+**v0.1.0** - Introspection 1
 - [ ] Find processes
 - [ ] Find modules
 - [ ] Find symbols
 - [ ] Parse memory regions (pages informations, ...)
 - [ ] Read / write memory
 
-**v0.2.0**
+**v0.2.0** - Introspection 2 + Hooking
 - [ ] Pattern or signature search
 - [ ] Hooking / detouring functions
 
-**v0.3.0**
+**v0.3.0** - Injection
 - [ ] Memory injection / patching
 
-**v0.4.0**
+**v0.4.0** - Assemble
 - [ ] Assemble / disassemble code
 
-**v0.5.0**
+**v0.5.0** - Debugging
 - [ ] Debugging functions
 - [ ] System inspection functions
 
