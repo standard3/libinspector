@@ -14,3 +14,4 @@ exclude = [".github", "CONTRIBUTING.md", "CODE_OF_CONDUCT.md", "assets"]
 license = "GPL-3.0"
 
 [dependencies]
+anyhow = "1.0.82"
