@@ -5,9 +5,6 @@ use std::{
     str::FromStr,
 };
 
-// TODO:
-// - implement common traits on structs (e.g. Debug, Clone, PartialEq, Eq, ToString + FromStr, Display)
-
 pub type InodeId = u64;
 
 /// Small device abstraction.
