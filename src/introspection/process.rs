@@ -1,6 +1,6 @@
 /// This module contains the structs and functions to introspect a process.
 /// Based on https://www.man7.org/linux/man-pages/man5/proc.5.html
-use crate::introspection::segment::Segment;
+use super::segment::Segment;
 use anyhow::Result;
 use std::{error::Error, fmt::Display, num::ParseIntError, str::FromStr};
 
