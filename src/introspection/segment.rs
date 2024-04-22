@@ -1,5 +1,9 @@
 /// This module contains the structs and functions to introspect a segment (memory mapping).
-use std::path::Path;
+use std::{
+    fmt::Display,
+    path::{Path, PathBuf},
+    str::FromStr,
+};
 
 // TODO:
 // - implement common traits on structs (e.g. Debug, Clone, PartialEq, Eq, ToString + FromStr, Display)
@@ -21,6 +25,35 @@ impl Device {
     }
 }
 
+impl Display for Device {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(f, "{}:{}", self.major, self.minor)
+    }
+}
+
+impl From<(u32, u32)> for Device {
+    fn from((major, minor): (u32, u32)) -> Self {
+        Device { major, minor }
+    }
+}
+
+impl From<Device> for (u32, u32) {
+    fn from(device: Device) -> Self {
+        (device.major, device.minor)
+    }
+}
+
+impl FromStr for Device {
+    type Err = std::num::ParseIntError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        let parts: Vec<&str> = s.split(':').collect();
+        let major = parts[0].parse()?;
+        let minor = parts[1].parse()?;
+        Ok(Device { major, minor })
+    }
+}
+
 /// Information about a segment in the process's virtual address space.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum SegmentType {
@@ -29,11 +62,49 @@ pub enum SegmentType {
     /// The virtual dynamically linked shared object.
     SharedLibrary,
     Data(DataSegment),
-    Code,
+    Code(Box<PathBuf>),
     /// A named private anonymous mapping.
     Anonymous(String),
     /// A named shared anonymous mapping.
     SharedAnonymous(String),
+}
+
+impl Display for SegmentType {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SegmentType::Stack => write!(f, "[stack]"),
+            SegmentType::SharedLibrary => write!(f, "[vdso]"),
+            SegmentType::Data(DataSegment::Heap) => write!(f, "[heap]"),
+            SegmentType::Data(DataSegment::Initialized) => todo!(),
+            SegmentType::Data(DataSegment::Uninitialized) => todo!(),
+            SegmentType::Code(path) => write!(f, "{}", path.display()),
+            SegmentType::Anonymous(name) => write!(f, "[anon:{}]", name),
+            SegmentType::SharedAnonymous(name) => write!(f, "[anon_shmem:{}]", name),
+        }
+    }
+}
+
+impl FromStr for SegmentType {
+    type Err = ();
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        if s.starts_with("[anon:") && s.ends_with(']') {
+            let name = s.trim_start_matches("[anon:").trim_end_matches(']');
+            Ok(SegmentType::Anonymous(name.to_string()))
+        } else if s.starts_with("[anon_shmem:") && s.ends_with(']') {
+            let name = s.trim_start_matches("[anon_shmem:").trim_end_matches(']');
+            Ok(SegmentType::SharedAnonymous(name.to_string()))
+        } else if s.starts_with('[') && s.ends_with(']') {
+            match s {
+                "[stack]" => Ok(SegmentType::Stack),
+                "[vdso]" => Ok(SegmentType::SharedLibrary),
+                "[heap]" => Ok(SegmentType::Data(DataSegment::Heap)),
+                _ => Err(()),
+            }
+        } else {
+            Ok(SegmentType::Code(Box::new(Path::new(&s).to_path_buf())))
+        }
+    }
 }
 
 /// Type of data segment.
@@ -56,6 +127,19 @@ pub enum SegmentPermission {
     Shared,
 }
 
+impl Display for SegmentPermission {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            SegmentPermission::Read => write!(f, "r"),
+            SegmentPermission::Write => write!(f, "w"),
+            SegmentPermission::Execute => write!(f, "x"),
+            SegmentPermission::NoPermission => write!(f, "-"),
+            SegmentPermission::Private => write!(f, "p"),
+            SegmentPermission::Shared => write!(f, "s"),
+        }
+    }
+}
+
 /// Mapped memory region in the process's virtual address space.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Segment {
@@ -71,10 +155,8 @@ pub struct Segment {
     pub device: Option<Device>,
     /// Inode on that device
     pub inode: Option<InodeId>,
-    /// Type of the segment
-    pub segment_type: SegmentType,
     /// Usually the file that is backing the mapping
-    pub path: Box<Path>,
+    pub pathname: SegmentType,
 }
 
 impl Segment {
@@ -86,8 +168,7 @@ impl Segment {
         offset: u64,
         device: Option<Device>,
         inode: Option<InodeId>,
-        segment_type: SegmentType,
-        path: Box<Path>,
+        pathname: SegmentType,
     ) -> Self {
         Segment {
             start,
@@ -96,48 +177,23 @@ impl Segment {
             offset,
             device,
             inode,
-            segment_type,
-            path,
+            pathname,
         }
     }
+}
 
-    /// Get the start address of the segment.
-    pub fn start(&self) -> u64 {
-        self.start
-    }
-
-    /// Get the end address of the segment.
-    pub fn end(&self) -> u64 {
-        self.end
-    }
-
-    /// Get the permissions of the segment.
-    pub fn permissions(&self) -> &[SegmentPermission; 4] {
-        &self.permissions
-    }
-
-    /// Get the offset of the segment.
-    pub fn offset(&self) -> u64 {
-        self.offset
-    }
-
-    /// Get the device of the segment.
-    pub fn device(&self) -> Option<Device> {
-        self.device.clone()
-    }
-
-    /// Get the inode of the segment.
-    pub fn inode(&self) -> Option<InodeId> {
-        self.inode
-    }
-
-    /// Get the type of the segment.
-    pub fn segment_type(&self) -> &SegmentType {
-        &self.segment_type
-    }
-
-    /// Get the path of the segment.
-    pub fn path(&self) -> &Path {
-        &self.path
+impl Display for Segment {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "{:016x}-{:016x} {:?} {:016x} {:?} {:?} {}",
+            self.start,
+            self.end,
+            self.permissions,
+            self.offset,
+            self.device,
+            self.inode,
+            self.pathname,
+        )
     }
 }
