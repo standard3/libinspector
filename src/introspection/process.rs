@@ -1,10 +1,37 @@
 /// This module contains the structs and functions to introspect a process.
 /// Based on https://www.man7.org/linux/man-pages/man5/proc.5.html
 use crate::introspection::segment::Segment;
+use anyhow::Result;
+use std::{error::Error, fmt::Display, num::ParseIntError, str::FromStr};
 
 pub type Pid = u32; // maximum value: 2^22
 
+#[derive(Debug)]
+pub enum ProcessParseError {
+    ParseIntError(ParseIntError),
+    ParseError(String),
+}
+
+impl Display for ProcessParseError {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        match self {
+            ProcessParseError::ParseIntError(e) => write!(f, "ParseIntError: {}", e),
+            ProcessParseError::ParseError(s) => write!(f, "ParseError: {}", s),
+        }
+    }
+}
+
+impl Error for ProcessParseError {
+    fn source(&self) -> Option<&(dyn std::error::Error + 'static)> {
+        match self {
+            ProcessParseError::ParseIntError(e) => Some(e),
+            ProcessParseError::ParseError(_) => None,
+        }
+    }
+}
+
 /// Represents a process state.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum ProcessState {
     /// R : Running
     Running,
@@ -24,7 +51,45 @@ pub enum ProcessState {
     Idle,
 }
 
+impl Display for ProcessState {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        let state = match self {
+            ProcessState::Running => "R",
+            ProcessState::UninterruptibleSleep => "D",
+            ProcessState::InterruptibleSleep => "S",
+            ProcessState::Stopped => "T",
+            ProcessState::Zombie => "Z",
+            ProcessState::Tracing => "t",
+            ProcessState::Dead => "X",
+            ProcessState::Idle => "I",
+        };
+        write!(f, "{}", state)
+    }
+}
+
+impl FromStr for ProcessState {
+    type Err = ProcessParseError;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s {
+            "R" => Ok(ProcessState::Running),
+            "D" => Ok(ProcessState::UninterruptibleSleep),
+            "S" => Ok(ProcessState::InterruptibleSleep),
+            "T" => Ok(ProcessState::Stopped),
+            "Z" => Ok(ProcessState::Zombie),
+            "t" => Ok(ProcessState::Tracing),
+            "X" => Ok(ProcessState::Dead),
+            "I" => Ok(ProcessState::Idle),
+            _ => Err(ProcessParseError::ParseError(format!(
+                "Unknown process state: {}",
+                s
+            ))),
+        }
+    }
+}
+
 /// Full status information about the process.
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Process {
     /// The process ID
     pub process_id: Pid,
@@ -65,8 +130,7 @@ pub struct Process {
     /// The nice value.
     pub nice: i8,
     /// Number of threads in this process.
-    /// Option because Process can be a thread.
-    pub num_threads: Option<i8>,
+    pub num_threads: i8,
     /// Obsolete
     pub itrealvalue: u64,
     /// The time the process started after system boot, measured in clock ticks.
@@ -140,4 +204,248 @@ pub struct Process {
     pub threads: Option<Vec<Process>>,
     /// Segments in the process's virtual address space.
     pub segments: Vec<Box<Segment>>,
+}
+
+impl Process {
+    /// Create a new process.
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        process_id: Pid,
+        name: String,
+        state: ProcessState,
+        parent_id: Pid,
+        parent_group_id: Pid,
+        session_id: Pid,
+        tty_nr: u32,
+        tpgid: u32,
+        flags: u32,
+        minflt: u64,
+        cminflt: u64,
+        majflt: u64,
+        cmajflt: u64,
+        utime: u64,
+        stime: u64,
+        cutime: u64,
+        cstime: u64,
+        priority: i8,
+        nice: i8,
+        num_threads: i8,
+        itrealvalue: u64,
+        starttime: u64,
+        vsize: u64,
+        rss: u64,
+        rsslim: u64,
+        startcode: u64,
+        endcode: u64,
+        startstack: u64,
+        kstkesp: u64,
+        kstkeip: u64,
+        signal: u64,
+        blocked: u64,
+        sigignore: u64,
+        sigcatch: u64,
+        wchan: u64,
+        nswap: u64,
+        cnswap: u64,
+        exit_signal: i16,
+        processor: i16,
+        rt_priority: u32,
+        policy: u32,
+        delayacct_blkio_ticks: u64,
+        guest_time: u64,
+        cguest_time: u64,
+        start_data: u64,
+        end_data: u64,
+        start_brk: u64,
+        arg_start: u64,
+        arg_end: u64,
+        env_start: u64,
+        env_end: u64,
+        exit_code: u32,
+    ) -> Self {
+        let threads = None; // TODO
+        let segments = Vec::new();
+
+        Process {
+            process_id,
+            name,
+            state,
+            parent_id,
+            parent_group_id,
+            session_id,
+            tty_nr,
+            tpgid,
+            flags,
+            minflt,
+            cminflt,
+            majflt,
+            cmajflt,
+            utime,
+            stime,
+            cutime,
+            cstime,
+            priority,
+            nice,
+            num_threads,
+            itrealvalue,
+            starttime,
+            vsize,
+            rss,
+            rsslim,
+            startcode,
+            endcode,
+            startstack,
+            kstkesp,
+            kstkeip,
+            signal,
+            blocked,
+            sigignore,
+            sigcatch,
+            wchan,
+            nswap,
+            cnswap,
+            exit_signal,
+            processor,
+            rt_priority,
+            policy,
+            delayacct_blkio_ticks,
+            guest_time,
+            cguest_time,
+            start_data,
+            end_data,
+            start_brk,
+            arg_start,
+            arg_end,
+            env_start,
+            env_end,
+            exit_code,
+            threads,
+            segments,
+        }
+    }
+}
+
+impl Display for Process {
+    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+        write!(
+            f,
+            "Process {} ({}): {}",
+            self.process_id, self.name, self.state
+        )
+    }
+}
+
+impl FromStr for Process {
+    type Err = anyhow::Error;
+    fn from_str(s: &str) -> Result<Self> {
+        let parts: Vec<&str> = s.split_whitespace().collect();
+
+        let process_id = parts[0].parse()?;
+        let name = parts[1].to_string();
+        let state = parts[2].parse()?;
+        let parent_id = parts[3].parse()?;
+        let parent_group_id = parts[4].parse()?;
+        let session_id = parts[5].parse()?;
+        let tty_nr = parts[6].parse()?;
+        let tpgid = parts[7].parse()?;
+        let flags = parts[8].parse()?;
+        let minflt = parts[9].parse()?;
+        let cminflt = parts[10].parse()?;
+        let majflt = parts[11].parse()?;
+        let cmajflt = parts[12].parse()?;
+        let utime = parts[13].parse()?;
+        let stime = parts[14].parse()?;
+        let cutime = parts[15].parse()?;
+        let cstime = parts[16].parse()?;
+        let priority = parts[17].parse()?;
+        let nice = parts[18].parse()?;
+        let num_threads = parts[19].parse()?;
+        let itrealvalue = parts[20].parse()?;
+        let starttime = parts[21].parse()?;
+        let vsize = parts[22].parse()?;
+        let rss = parts[23].parse()?;
+        let rsslim = parts[24].parse()?;
+        let startcode = parts[25].parse()?;
+        let endcode = parts[26].parse()?;
+        let startstack = parts[27].parse()?;
+        let kstkesp = parts[28].parse()?;
+        let kstkeip = parts[29].parse()?;
+        let signal = parts[30].parse()?;
+        let blocked = parts[31].parse()?;
+        let sigignore = parts[32].parse()?;
+        let sigcatch = parts[33].parse()?;
+        let wchan = parts[34].parse()?;
+        let nswap = parts[35].parse()?;
+        let cnswap = parts[36].parse()?;
+        let exit_signal = parts[37].parse()?;
+        let processor = parts[38].parse()?;
+        let rt_priority = parts[39].parse()?;
+        let policy = parts[40].parse()?;
+        let delayacct_blkio_ticks = parts[41].parse()?;
+        let guest_time = parts[42].parse()?;
+        let cguest_time = parts[43].parse()?;
+        let start_data = parts[44].parse()?;
+        let end_data = parts[45].parse()?;
+        let start_brk = parts[46].parse()?;
+        let arg_start = parts[47].parse()?;
+        let arg_end = parts[48].parse()?;
+        let env_start = parts[49].parse()?;
+        let env_end = parts[50].parse()?;
+        let exit_code = parts[51].parse()?;
+
+        Ok(Process::new(
+            process_id,
+            name,
+            state,
+            parent_id,
+            parent_group_id,
+            session_id,
+            tty_nr,
+            tpgid,
+            flags,
+            minflt,
+            cminflt,
+            majflt,
+            cmajflt,
+            utime,
+            stime,
+            cutime,
+            cstime,
+            priority,
+            nice,
+            num_threads,
+            itrealvalue,
+            starttime,
+            vsize,
+            rss,
+            rsslim,
+            startcode,
+            endcode,
+            startstack,
+            kstkesp,
+            kstkeip,
+            signal,
+            blocked,
+            sigignore,
+            sigcatch,
+            wchan,
+            nswap,
+            cnswap,
+            exit_signal,
+            processor,
+            rt_priority,
+            policy,
+            delayacct_blkio_ticks,
+            guest_time,
+            cguest_time,
+            start_data,
+            end_data,
+            start_brk,
+            arg_start,
+            arg_end,
+            env_start,
+            env_end,
+            exit_code,
+        ))
+    }
 }
