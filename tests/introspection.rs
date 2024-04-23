@@ -1,7 +1,7 @@
 #[cfg(test)]
 mod instrospection_tests {
     use libinspector::introspection::segment::*;
-    use std::{path::Path, result, str::FromStr};
+    use std::{path::Path, str::FromStr};
 
     fn am_i_root() -> bool {
         nix::unistd::geteuid().is_root()
